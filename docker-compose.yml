@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: securepassword
+      POSTGRES_DB: link_manager
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  api_fastify:
+    build:
+      context: ./api
+    environment:
+      - DATABASE_URL=postgresql://admin:securepassword@postgres:5432/link_manager
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+
+  web_nextjs:
+    build:
+      context: ./web
+    environment:
+      - DATABASE_URL=postgresql://admin:securepassword@postgres:5432/link_manager
+      - NEXTAUTH_SECRET=yoursecret
+      - NEXTAUTH_URL=http://localhost:3001
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=ton_token_cloudflare_ici
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  redis_data:

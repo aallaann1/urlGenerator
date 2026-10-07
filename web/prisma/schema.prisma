@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  
+  links         Link[]
+}
+
+model Link {
+  id            String    @id @default(cuid())
+  userId        String?   // Make optional temporarily to avoid breaking existing data, or make required if DB is empty
+  shortCode     String    @unique // ex: "promo-pokemon" ou "prez-ia"
+  originalUrl   String
+  title         String?   // Pour s'y retrouver dans le dashboard
+  qrCodeConfig  Json?     // Couleurs, logo au centre du QR
+  clicks        Int       @default(0)
+  expiresAt     DateTime?
+  passwordHash  String?   // Si le lien est protégé
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Analytics     Analytics[]
+}
+
+model Analytics {
+  id          String   @id @default(cuid())
+  linkId      String
+  clickedAt   DateTime @default(now())
+  userAgent   String?
+  deviceType  String?  // Mobile, Desktop, Tablette
+  browser     String?
+  os          String?
+  referrer    String?  // ex: Instagram, LinkedIn, Direct
+  country     String?
+  city        String?
+  region      String?
+  language    String?
+  fingerprint String?
+  
+  link        Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+}
